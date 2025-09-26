@@ -1,0 +1,8 @@
+dataset,best_lambda
+1-diabetes.txt,1.0
+2-australian.txt,1.0
+3-german_numer.txt,10.0
+4-a1a.txt,1.0
+5-madelon.txt,1000.0
+6-phishing.txt,0.1
+7-gisette.bz2,10.0
