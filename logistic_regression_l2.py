@@ -16,14 +16,24 @@ class LogisticRegressionL2:
 
     @staticmethod
     def sigmoid(z):
-        z = np.clip(z, -500, 500)
-        return 1 / (1 + np.exp(-z))
+        return np.where(z >= 0,
+                        1 / (1 + np.exp(-z)),
+                        np.exp(z) / (1 + np.exp(z)))
 
     def compute_loss(self, X, y, w):
-        logits = y * X.dot(w)
+        logits = y * np.dot(X, w)
         loss_terms = np.logaddexp(0, -logits)
 
-        return np.sum(loss_terms) + (self.lambda_reg / 2) * np.sum(np.square(w))
+        total_loss = 0.0
+        for i in range(len(loss_terms)):
+            total_loss += loss_terms[i]
+
+        reg = 0.0
+        for wi in w:
+            reg += wi * wi
+        regularization = (self.lambda_reg / 2) * reg
+
+        return total_loss + regularization
 
     def feed_forward(self, X):
         z = X.dot(self.w)
@@ -41,13 +51,14 @@ class LogisticRegressionL2:
         grad = X.T.dot(r)
         return grad + self.lambda_reg * w
 
-    def armijo_line_search(self, grad, X, y, direction, alpha_max=ARMIJO_ALPHA, gamma=ARMIJO_GAMMA, delta=ARMIJO_DELTA):
-        alpha = alpha_max
+    def armijo_line_search(self, grad, X, y, direction, alpha_prev, alpha_max=ARMIJO_ALPHA, gamma=ARMIJO_GAMMA, delta=ARMIJO_DELTA):
+        delta_0 = min(alpha_max, alpha_prev/delta)
+        alpha = delta_0
         current_loss = self.compute_loss(X, y, self.w)
         while True:
-            w_new = self.w + alpha * direction
+            w_new = np.copy(self.w) + alpha * direction
             loss_new = self.compute_loss(X, y, w_new)
-            if loss_new <= current_loss + gamma * alpha * grad.dot(direction):
+            if loss_new <= current_loss + gamma * alpha * np.dot(grad, direction):
                 break
             alpha *= delta
         return alpha
@@ -55,29 +66,28 @@ class LogisticRegressionL2:
     def wolfe_line_search(self, grad, X, y, direction, alpha_max=1, gamma=WOLFE_GAMMA, delta=WOLFE_DELTA, sigma=0.2):
         alpha = alpha_max
         current_loss = self.compute_loss(X, y, self.w)
-        while True:
-            w_new = self.w + alpha * direction
+        while alpha > 1e-12:
+            w_new = np.copy(self.w) + alpha * direction
             loss_new = self.compute_loss(X, y, w_new)
             grad_new = self.compute_loss_gradient(X, y, w_new)
-            if loss_new <= current_loss + gamma * alpha * grad.dot(direction) and np.abs(
-                    grad_new.dot(direction)) <= sigma * np.abs(grad.dot(direction)):
+            if (loss_new <= current_loss + gamma * alpha * np.dot(grad, direction) and
+                    np.abs(np.dot(grad_new, direction)) <= sigma * np.abs(np.dot(grad, direction))):
                 break
             alpha *= delta
-            if alpha < 1e-12:
-                return alpha
         return alpha
 
     def gradient_descent_armijo(self, X, y, tol=1e-4):
         k = 0
+        alpha_prev = ARMIJO_ALPHA
         start_time = time.time()
         grad = self.compute_loss_gradient(X, y, self.w)
         while np.linalg.norm(grad) > tol:
             k += 1
             direction = -grad
-            lr = self.armijo_line_search(grad, X, y, direction)
-            self.w += lr * direction
+            lr = self.armijo_line_search(grad, X, y, direction, alpha_prev=alpha_prev)
+            alpha_prev = lr
+            self.w = np.copy(self.w) + lr * direction
             grad = self.compute_loss_gradient(X, y, self.w)
-        print(f"Iter {k}, grad_norm: {np.linalg.norm(grad)}")
         return (time.time() - start_time), k
 
     def conjugate_gradient_wolfe(self, X, y, tol=1e-4):
@@ -85,12 +95,11 @@ class LogisticRegressionL2:
         start_time = time.time()
         grad = self.compute_loss_gradient(X, y, self.w)
         direction = -grad
-
         while np.linalg.norm(grad) > tol:
             lr = self.wolfe_line_search(grad, X, y, direction)
-            self.w += lr * direction
+            self.w = np.add(self.w, lr * direction)
             grad_new = self.compute_loss_gradient(X, y, self.w)
-            beta = np.linalg.norm(grad_new) ** 2 / np.linalg.norm(grad) ** 2
+            beta = np.dot(grad_new, grad_new) / np.dot(grad, grad)
             grad = grad_new
             direction = -grad + beta * direction
             k += 1

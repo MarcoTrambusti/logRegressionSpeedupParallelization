@@ -1,9 +1,7 @@
 import os
-
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
-
 from config import DATASETS_FOLDER, CV_RESULTS_PATH
 from data_utils import load_data
 
