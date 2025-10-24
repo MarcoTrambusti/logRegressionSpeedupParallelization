@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 from logistic_regression_l2 import LogisticRegressionL2
 from numba import cuda, float64
@@ -128,12 +130,6 @@ def compute_XTr_kernel(X_flat, r, grad, n_samples, n_features):
             acc += X_flat[i * n_features + j] * r[i]
         grad[j] = acc
 
-@cuda.jit
-def add_regularization_kernel(grad, w, lambda_reg):
-    j = cuda.grid(1)
-    if j < grad.size:
-        grad[j] += lambda_reg * w[j]
-
 
 class LogisticRegressionL2Cuda(LogisticRegressionL2):
     def __init__(self, lambda_reg=0.1, TPB=256):
@@ -151,8 +147,8 @@ class LogisticRegressionL2Cuda(LogisticRegressionL2):
         self.warmup_all()
 
     def warmup_all(self, N=128, D=500):
-        X_dummy = np.random.randn(N, D).astype(np.float64)
-        y_dummy = np.random.choice([-1, 1], size=N).astype(np.float64)
+        X_dummy = np.random.randn(N, D).astype(np.float32)
+        y_dummy = np.random.choice([-1, 1], size=N).astype(np.float32)
         w_dummy = np.random.randn(D).astype(np.float64)
 
         Xf_gpu = cuda.to_device(X_dummy.reshape(-1))
@@ -178,9 +174,7 @@ class LogisticRegressionL2Cuda(LogisticRegressionL2):
         compute_XTr_kernel[blocks_f, self.TPB](
             Xf_gpu, r_gpu, grad_gpu, N, D
         )
-        add_regularization_kernel[blocks_f, self.TPB](
-            grad_gpu, w_gpu, self.lambda_reg
-        )
+
         cuda.synchronize()
 
     def cache_data(self, X, y):
@@ -207,6 +201,7 @@ class LogisticRegressionL2Cuda(LogisticRegressionL2):
         return d_array.copy_to_host()[0]
 
     def compute_loss(self, X, y, w):
+        start = time.time()
         n_samples, n_features = X.shape
         self.w_gpu = cuda.to_device(w)
 
@@ -226,9 +221,15 @@ class LogisticRegressionL2Cuda(LogisticRegressionL2):
 
         total_loss = self.gpu_sum(loss_terms_gpu)
         reg_term = (self.lambda_reg / 2.0) * self.gpu_sum(reg_terms_gpu)
-        return total_loss + reg_term
+        loss = total_loss + reg_term
+
+        elapsed = time.time() - start
+        self.loss_time += elapsed
+        self.total_time += elapsed
+        return loss
 
     def compute_loss_gradient(self, X, y, w):
+        start = time.time()
         n_samples, n_features = X.shape
 
         d_w = cuda.to_device(w.astype(np.float64))
@@ -241,8 +242,11 @@ class LogisticRegressionL2Cuda(LogisticRegressionL2):
 
         compute_r_kernel[blocks_r, threads](self.X_flat_gpu, self.y_gpu, d_w, d_r, n_samples, n_features)
         compute_XTr_kernel[blocks_f, threads](self.X_flat_gpu, d_r, d_grad, n_samples, n_features)
-        # Step 3: + λ w
-        #add_regularization_kernel[blocks_f, threads](d_grad, d_w, self.lambda_reg)
 
         cuda.synchronize()
-        return d_grad.copy_to_host() + self.lambda_reg * w
+        grad = d_grad.copy_to_host() + self.lambda_reg * w
+
+        elapsed = time.time() - start
+        self.gradient_time += elapsed
+        self.total_time += elapsed
+        return grad

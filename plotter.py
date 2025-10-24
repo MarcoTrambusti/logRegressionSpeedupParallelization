@@ -27,7 +27,11 @@ def plot_and_save():
 
     for metric, ylabel, suffix in [
         ('speedup', 'Speedup (log scale)', 'speedup'),
-        ('efficiency', 'Efficiency (log scale)', 'efficiency')
+        ('efficiency', 'Efficiency (log scale)', 'efficiency'),
+        ('loss_speedup', 'Loss Speedup (log scale)', 'loss_speedup'),
+        ('loss_efficiency', 'Loss Efficiency (log scale)', 'loss_efficiency'),
+        ('grad_speedup', 'Gradient Speedup (log scale)', 'grad_speedup'),
+        ('grad_efficiency', 'Gradient Efficiency (log scale)', 'grad_efficiency')
     ]:
         for method_prefix, filename, title in [
             ('GD CUDA', f'{config.RESULT_FOLDER}/gd_cuda_{suffix}.png', f'{ylabel} vs Threads - GD CUDA'),
