@@ -1,5 +1,9 @@
 # logRegressionSpeedupParallelization
+![img.png](img.png)
 
+## Reports
+ [Optimization Method Lab. Report](https://github.com/MarcoTrambusti/logRegressionSpeedupParallelization/blob/main/reports/Armijo_and_Wolfe_Parallelization_Assignment__Optimization_Methods_.pdf)\
+ [Parallel Computing Lab. Report](https://github.com/MarcoTrambusti/logRegressionSpeedupParallelization/blob/main/reports/Armijo_and_Wolfe_Parallelization_Assignment__Parallel_Computing_.pdf)
 ## Project Title & Description
 
 This repository contains a Python implementation of L2 regularized Logistic Regression, focusing on speedup through parallelization techniques, including CUDA acceleration. The project explores different optimization strategies and their impact on performance.
