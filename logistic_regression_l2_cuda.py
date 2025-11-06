@@ -37,7 +37,7 @@ def block_reduce_sum(val):
     return val
 
 
-@cuda.jit
+@cuda.jit(fastmath=True)
 def reduce_sum_kernel(input_array, output_array):
     tid = cuda.threadIdx.x
     bid = cuda.blockIdx.x
@@ -106,7 +106,7 @@ def sigmoid(z):
         ez = math.exp(z)
         return ez / (1.0 + ez)
 
-@cuda.jit
+@cuda.jit(fastmath=True)
 def compute_r_kernel(X_flat, y, w, r, n_samples, n_features):
     i = cuda.grid(1)
     if i < n_samples:
@@ -120,7 +120,7 @@ def compute_r_kernel(X_flat, y, w, r, n_samples, n_features):
         z = -yi * dot
         r[i] = -yi * sigmoid(z)
 
-@cuda.jit
+@cuda.jit(fastmath=True)
 def compute_XTr_kernel(X_flat, r, grad, n_samples, n_features):
     j = cuda.grid(1)
     if j < n_features:

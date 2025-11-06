@@ -236,5 +236,5 @@ def test_loss():
 
 
 if __name__ == '__main__':
-    #test_loss()
+    test_loss()
     plotter.plot_and_save()
